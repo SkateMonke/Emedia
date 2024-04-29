@@ -1,8 +1,15 @@
-IFD = list()
-dirEntry = []
+import sys
+from io import BytesIO
+from PIL import Image
+
 
 def split_list(lst, chunk_size):
     return [lst[i:i + chunk_size] for i in range(0, len(lst), chunk_size)]
+
+
+IFD = list()
+dirEntry = []
+fileToWrite = None
 
 type_dict = {
     "1": 1,
@@ -58,8 +65,24 @@ baseline_tags = {
     "Copyright": 33432
 }
 
+requiered_baseline = {
+    "ImageWidth": 256,
+    "ImageLength": 257,
+    "Compression": 259,
+    "PhotometricInterpretation": 262,
+    "StripOffsets": 273,
+    "RowsPerStrip": 278,
+    "StripByteCount": 279,
+    "XResolution": 282,
+    "YResolution": 283,
+    "ResolutionUnit": 296
+}
+
 with open("at3_1m4_01.tif", "rb") as f:
     header = f.read(8)
+    print(f"Header: {header}")
+    fileToWrite = header
+
     if header[:2] == b'II':
         endian = "little"
     else:
@@ -76,6 +99,8 @@ with open("at3_1m4_01.tif", "rb") as f:
         if not num_entries:
             break
 
+        fileToWrite += num_entries.to_bytes(2, byteorder=endian)
+
         ifd_size = (num_entries * 12) + 6
         ifd_data = f.read(ifd_size)
         next_ifd_offset = int.from_bytes(f.read(4), endian)
@@ -91,36 +116,42 @@ with open("at3_1m4_01.tif", "rb") as f:
             tmp_val = count_tmp * type_dict[str(type_tmp)]
 
             if count_tmp == 1 or tmp_val > 4:
-                valueOffset_tmp = int.from_bytes(ifd_data[j + 8:j + 12], endian)
+                value = int.from_bytes(ifd_data[j + 8:j + 12], endian)
             elif count_tmp <= 4 and tmp_val <= 4:
-                valueOffset_tmp = (split_list(ifd_data[j + 8:j + 12], 4//count_tmp))
-                for h in range(0, len(valueOffset_tmp)):
-                    valueOffset_tmp[h] = int.from_bytes(valueOffset_tmp[h], endian)
+                value = (split_list(ifd_data[j + 8:j + 12], 4//count_tmp))
+                for h in range(0, len(value)):
+                    value[h] = int.from_bytes(value[h], endian)
 
             tmpList.append(
                 {
                     "tag": int.from_bytes(ifd_data[j:j + 2], endian),
                     "type": type_tmp,
                     "count": count_tmp,
-                    "valueOffset": valueOffset_tmp
+                    "value": value
                 }
             )
 
             if tmp_val > 4:
-                f.seek(tmpList[-1]["valueOffset"])
+                f.seek(tmpList[-1]["value"])
 
                 tmp_val_list = list()
                 for _ in range(count_tmp):
                     tmp_val_list.append(int.from_bytes(f.read(type_dict[str(type_tmp)]), endian))
 
-                tmpList[-1]["valueOffset"] = tmp_val_list
+                tmpList[-1]["value"] = tmp_val_list
+                tmpList[-1]["offset"] = int.from_bytes(ifd_data[j + 8:j + 12], endian)
 
-        dirEntry.append(tmpList)
+        dirEntry = tmpList
 
 print("Number of IFD:", len(IFD))
-for elem in IFD:
-    print(elem)
+print(IFD)
 
-for elem in dirEntry:
-    for xd in elem:
-        print(xd)
+print("\nTags:")
+for entry in dirEntry:
+    print(entry)
+
+with open("output.tif", 'wb') as output_file:
+    print("\nOutput file: ", fileToWrite)
+    output_file.write(fileToWrite)
+
+# .to_bytes(<ilosc_bitów>, endian=)
