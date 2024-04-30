@@ -1,6 +1,7 @@
 IFD = list()
 dirEntry = []
 
+
 def split_list(lst, chunk_size):
     return [lst[i:i + chunk_size] for i in range(0, len(lst), chunk_size)]
 
@@ -58,7 +59,20 @@ baseline_tags = {
     "Copyright": 33432
 }
 
-with open("at3_1m4_01.tif", "rb") as f:
+requiered_baseline = {
+    "ImageWidth": 256,
+    "ImageLength": 257,
+    "Compression": 259,
+    "PhotometricInterpretation": 262,
+    "StripOffsets": 273,
+    "RowsPerStrip": 278,
+    "StripByteCount": 279,
+    "XResolution": 282,
+    "YResolution": 283,
+    "ResolutionUnit": 296
+}
+
+with open("monke.tiff", "rb") as f:
     header = f.read(8)
     if header[:2] == b'II':
         endian = "little"
@@ -115,12 +129,56 @@ with open("at3_1m4_01.tif", "rb") as f:
 
                 tmpList[-1]["valueOffset"] = tmp_val_list
 
-        dirEntry.append(tmpList)
+        dirEntry = tmpList
 
 print("Number of IFD:", len(IFD))
 for elem in IFD:
     print(elem)
 
+i = 0
 for elem in dirEntry:
-    for xd in elem:
-        print(xd)
+    if(elem["tag"] in requiered_baseline.values()):
+        i += 1
+        print(elem)
+
+print(i)
+
+i = 0
+for elem in dirEntry:
+    i += 1
+    print(elem)
+
+print(i)
+
+with open("monke.tiff", "rb") as f_in:
+    with open("monke_anon.tiff", "wb") as f_out:
+        plik = f_in.read()
+        header = plik[:8]
+        if header[:2] == b'II':
+            endian = "little"
+        else:
+            endian = "big"
+
+        offset = 2 + int.from_bytes(header[4:], endian)
+        A = offset - 10
+        B = int.from_bytes(plik[A:A+1], endian)
+        print(len(plik))
+        print(offset)
+        print((A + (B * 12)))
+        while offset < (A + (B * 12)):
+            tag = int.from_bytes(plik[offset: offset + 2], endian)
+            if tag in baseline_tags.values():
+                offset += 12
+            else:
+                # type
+                # plik[offset+2:offset+3] = (1).to_bytes(2, endian)
+                plik = plik[:offset + 2] + (1).to_bytes(2, endian) + plik[offset + 4:]
+                # count
+                # plik[offset+4:offset+7] = (1).to_bytes(4, endian)
+                plik = plik[:offset + 4] + (1).to_bytes(4, endian) + plik[offset + 8:]
+                # value
+                # plik[offset+8:offset+11] = (0).to_bytes(4, endian)
+                plik = plik[:offset + 8] + (0).to_bytes(4, endian) + plik[offset + 12:]
+                offset += 12
+        f_out.write(plik)
+
