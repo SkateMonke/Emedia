@@ -190,8 +190,8 @@ try:
             if elem["tag"] not in requiered_baseline.keys():
                 i += 1
                 print(elem)
-
         print("No:", i, "\n")
+
 except Exception as e:
     print(e)
 
