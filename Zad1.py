@@ -1,9 +1,13 @@
+from tkinter import Tk
+from tkinter.filedialog import askopenfilename
+
 IFD = list()
 dirEntry = []
 
 
 def split_list(lst, chunk_size):
     return [lst[i:i + chunk_size] for i in range(0, len(lst), chunk_size)]
+
 
 type_dict = {
     "1": 1,
@@ -46,7 +50,7 @@ baseline_tags = {
     "YResolution": 283,
     "PlanarConfiguration": 284,
     "FreeOffsets": 288,
-    "FreeByteCounts":  289,
+    "FreeByteCounts": 289,
     "GrayResponseUnit": 290,
     "GrayResponseCurve": 291,
     "ResolutionUnit": 296,
@@ -58,10 +62,12 @@ baseline_tags = {
     "ExtraSamples": 338,
     "Copyright": 33432
 }
+baseline_tags = {v: k for k, v in baseline_tags.items()}
 
-requiered_baseline = {
+requiered_baseline_gray = {
     "ImageWidth": 256,
     "ImageLength": 257,
+    "BitsPerSample": 258,
     "Compression": 259,
     "PhotometricInterpretation": 262,
     "StripOffsets": 273,
@@ -72,113 +78,192 @@ requiered_baseline = {
     "ResolutionUnit": 296
 }
 
-with open("monke.tiff", "rb") as f:
-    header = f.read(8)
-    if header[:2] == b'II':
-        endian = "little"
-    else:
-        endian = "big"
+requiered_baseline_rgb = {
+    "ImageWidth": 256,
+    "ImageLength": 257,
+    "BitsPerSample": 258,
+    "Compression": 259,
+    "PhotometricInterpretation": 262,
+    "StripOffsets": 273,
+    "SamplesPerPixel": 277,
+    "RowsPerStrip": 278,
+    "StripByteCount": 279,
+    "XResolution": 282,
+    "YResolution": 283,
+    "ResolutionUnit": 296
+}
+requiered_baseline = None
 
-    offset_0 = int.from_bytes(header[4:], endian)
-    i = offset_0
-    ifd_size = None
+root = Tk()
+root.withdraw()
+root.wm_attributes('-topmost', 1)
 
-    while i != 0:
-        f.seek(i)
-        num_entries = int.from_bytes(f.read(2), endian)
+filename = askopenfilename(parent=root)
 
-        if not num_entries:
-            break
-
-        ifd_size = (num_entries * 12) + 6
-        ifd_data = f.read(ifd_size)
-        next_ifd_offset = int.from_bytes(f.read(4), endian)
-
-        IFD.append(ifd_data)
-
-        i = next_ifd_offset
-
-        tmpList = list()
-        for j in range(0, ifd_size - 6, 12):
-            type_tmp = int.from_bytes(ifd_data[j + 2:j + 4], endian)
-            count_tmp = int.from_bytes(ifd_data[j + 4:j + 8], endian)
-            tmp_val = count_tmp * type_dict[str(type_tmp)]
-
-            if count_tmp == 1 or tmp_val > 4:
-                valueOffset_tmp = int.from_bytes(ifd_data[j + 8:j + 12], endian)
-            elif count_tmp <= 4 and tmp_val <= 4:
-                valueOffset_tmp = (split_list(ifd_data[j + 8:j + 12], 4//count_tmp))
-                for h in range(0, len(valueOffset_tmp)):
-                    valueOffset_tmp[h] = int.from_bytes(valueOffset_tmp[h], endian)
-
-            tmpList.append(
-                {
-                    "tag": int.from_bytes(ifd_data[j:j + 2], endian),
-                    "type": type_tmp,
-                    "count": count_tmp,
-                    "valueOffset": valueOffset_tmp
-                }
-            )
-
-            if tmp_val > 4:
-                f.seek(tmpList[-1]["valueOffset"])
-
-                tmp_val_list = list()
-                for _ in range(count_tmp):
-                    tmp_val_list.append(int.from_bytes(f.read(type_dict[str(type_tmp)]), endian))
-
-                tmpList[-1]["valueOffset"] = tmp_val_list
-
-        dirEntry = tmpList
-
-print("Number of IFD:", len(IFD))
-for elem in IFD:
-    print(elem)
-
-i = 0
-for elem in dirEntry:
-    if(elem["tag"] in requiered_baseline.values()):
-        i += 1
-        print(elem)
-
-print(i)
-
-i = 0
-for elem in dirEntry:
-    i += 1
-    print(elem)
-
-print(i)
-
-with open("monke.tiff", "rb") as f_in:
-    with open("monke_anon.tiff", "wb") as f_out:
-        plik = f_in.read()
-        header = plik[:8]
+try:
+    with open(filename, "rb") as f:
+        header = f.read(8)
         if header[:2] == b'II':
             endian = "little"
         else:
             endian = "big"
 
-        offset = 2 + int.from_bytes(header[4:], endian)
-        A = offset - 10
-        B = int.from_bytes(plik[A:A+1], endian)
-        print(len(plik))
-        print(offset)
-        print((A + (B * 12)))
-        while offset < (A + (B * 12)):
-            tag = int.from_bytes(plik[offset: offset + 2], endian)
-            if tag in baseline_tags.values():
-                offset += 12
-            else:
-                # type
-                # plik[offset+2:offset+3] = (1).to_bytes(2, endian)
-                plik = plik[:offset + 2] + (1).to_bytes(2, endian) + plik[offset + 4:]
-                # count
-                # plik[offset+4:offset+7] = (1).to_bytes(4, endian)
-                plik = plik[:offset + 4] + (1).to_bytes(4, endian) + plik[offset + 8:]
-                # value
-                # plik[offset+8:offset+11] = (0).to_bytes(4, endian)
-                plik = plik[:offset + 8] + (0).to_bytes(4, endian) + plik[offset + 12:]
-                offset += 12
-        f_out.write(plik)
+        offset_0 = int.from_bytes(header[4:], endian)
+        i = offset_0
+        ifd_size = None
 
+        while i != 0:
+            f.seek(i)
+            num_entries = int.from_bytes(f.read(2), endian)
+
+            if not num_entries:
+                break
+
+            ifd_size = (num_entries * 12) + 6
+            ifd_data = f.read(ifd_size)
+            next_ifd_offset = int.from_bytes(f.read(4), endian)
+
+            IFD.append(ifd_data)
+
+            i = next_ifd_offset
+
+            tmpList = list()
+            for j in range(0, ifd_size - 6, 12):
+                type_tmp = int.from_bytes(ifd_data[j + 2:j + 4], endian)
+                count_tmp = int.from_bytes(ifd_data[j + 4:j + 8], endian)
+                tmp_val = count_tmp * type_dict[str(type_tmp)]
+
+                if count_tmp == 1 or tmp_val > 4:
+                    valueOffset_tmp = int.from_bytes(ifd_data[j + 8:j + 12], endian)
+                elif count_tmp <= 4 and tmp_val <= 4:
+                    valueOffset_tmp = (split_list(ifd_data[j + 8:j + 12], 4 // count_tmp))
+                    for h in range(0, len(valueOffset_tmp)):
+                        valueOffset_tmp[h] = int.from_bytes(valueOffset_tmp[h], endian)
+
+                tmpList.append(
+                    {
+                        "tag": baseline_tags[int.from_bytes(ifd_data[j:j + 2], endian)],
+                        "type": type_tmp,
+                        "count": count_tmp,
+                        "values": valueOffset_tmp
+                    }
+                )
+
+                if tmp_val > 4:
+                    tmpList[-1]["offset"] = tmpList[-1]["values"]
+                    f.seek(tmpList[-1]["values"])
+
+                    tmp_val_list = list()
+                    for _ in range(count_tmp):
+                        tmp_val_list.append(int.from_bytes(f.read(type_dict[str(type_tmp)]), endian))
+
+                    tmpList[-1]["values"] = tmp_val_list
+
+            dirEntry = tmpList
+
+        print("Number of IFD:", len(IFD))
+        for elem in IFD:
+            print(elem)
+
+        tmp = None
+        for entry in dirEntry:
+            if entry["tag"] == "SamplesPerPixel":
+                tmp = entry["values"]
+
+        if tmp == 1:
+            requiered_baseline = requiered_baseline_gray
+        elif tmp != 1:
+            requiered_baseline = requiered_baseline_rgb
+
+        i = 0
+        print("\nRequiered baseline:")
+        for elem in dirEntry:
+            if elem["tag"] in requiered_baseline.keys():
+                i += 1
+                print(elem)
+
+        print("No:", i)
+
+        i = 0
+        print("\nBaseline:")
+        for elem in dirEntry:
+            if elem["tag"] not in requiered_baseline.keys():
+                i += 1
+                print(elem)
+        print("No:", i, "\n")
+
+except Exception as e:
+    print(e)
+
+inp = input('Przeprowadzic "anonimizacje" [enter to skip]: ')
+if inp:
+    with open(filename, "rb") as f_in:
+        with open("./img/output.tif", "wb") as f_out:
+            plik = f_in.read()
+            header = plik[:8]
+            if header[:2] == b'II':
+                endian = "little"
+            else:
+                endian = "big"
+
+            offset = int.from_bytes(header[4:], endian)
+            A = offset
+            B = int.from_bytes(plik[A:A + 2], endian)
+
+            offset += 2
+
+            while offset < (A + 2 + (B * 12)):
+                tag = int.from_bytes(plik[offset: offset + 2], endian)
+
+                if tag in requiered_baseline.values():
+                    offset += 12
+                else:
+                    # type
+                    plik = plik[:offset + 2] + (1).to_bytes(2, endian) + plik[offset + 4:]
+                    # count
+                    plik = plik[:offset + 4] + (1).to_bytes(4, endian) + plik[offset + 8:]
+                    # value
+                    plik = plik[:offset + 8] + (0).to_bytes(4, endian) + plik[offset + 12:]
+
+                    tmp = plik[offset:offset + 12]
+
+                    offset += 12
+            f_out.write(plik)
+
+inp = input('Wykonac loop bomb [enter to skip]: ')
+if inp:
+    with open(filename, "rb") as f_in:
+        with open("./img/output_bomb.tif", "wb") as f_out:
+            plik = f_in.read()
+            header = plik[:8]
+            if header[:2] == b'II':
+                endian = "little"
+            else:
+                endian = "big"
+
+            offset = int.from_bytes(header[4:], endian)
+            A = offset
+            B = int.from_bytes(plik[A:A + 2], endian)
+
+            offset += 2
+            tmp_cnt = 1
+
+            while offset < (A + 2 + (B * 12)):
+                tag = int.from_bytes(plik[offset: offset + 2], endian)
+
+                if tag in requiered_baseline.values():
+                    offset += 12
+                else:
+                    # type
+                    plik = plik[:offset + 2] + (1).to_bytes(2, endian) + plik[offset + 4:]
+                    # count
+                    plik = plik[:offset + 4] + (1).to_bytes(4, endian) + plik[offset + 8:]
+                    # value
+                    if tmp_cnt >= -1:
+                        plik = plik[:offset + 8] + plik[offset + i * 12:offset + i * 12] + plik[offset + 12:]
+                        tmp_cnt -= 2
+                    else:
+                        plik = plik[:offset + 8] + (0).to_bytes(4, endian) + plik[offset + 12:]
+
+                    offset += 12
+            f_out.write(plik)
