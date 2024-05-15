@@ -193,7 +193,7 @@ try:
         print("No:", i, "\n")
 
 except Exception as e:
-    print(e)
+    print("Error code: " + str(e))
 
 inp = input('Przeprowadzic "anonimizacje" [enter to skip]: ')
 if inp:

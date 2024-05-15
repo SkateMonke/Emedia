@@ -21,7 +21,8 @@ type_dict = {
     "9": 4,
     "10": 8,
     "11": 4,
-    "12": 8
+    "12": 8,
+    "848": 1
 }
 
 root = Tk()
@@ -60,9 +61,16 @@ with open(filename, "rb") as f:
         tmpList = list()
         for j in range(0, ifd_size - 6, 12):
             tag = int.from_bytes(ifd_data[j:j + 2], endian)
+            # print("Tag: " + str(tag))
             type_tmp = int.from_bytes(ifd_data[j + 2:j + 4], endian)
+            # print("Type: " + str(type_tmp))
             count_tmp = int.from_bytes(ifd_data[j + 4:j + 8], endian)
-            tmp_val = count_tmp * type_dict[str(type_tmp)]
+            # print("Count: " + str(count_tmp))
+            if type_tmp <= 12:
+                tmp_val = count_tmp * type_dict[str(type_tmp)]
+            else:
+                tmp_val = 1
+            print(tmp_val)
 
             if count_tmp == 1 or tmp_val > 4:
                 valueOffset_tmp = int.from_bytes(ifd_data[j + 8:j + 12], endian)
@@ -90,7 +98,7 @@ with open(filename, "rb") as f:
 
                 tmpList[-1]["values"] = tmp_val_list
 
-        dirEntry = tmpList
+        dirEntry += tmpList
 
     print("Number of IFD:", len(IFD))
     for elem in IFD:

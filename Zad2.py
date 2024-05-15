@@ -1,6 +1,6 @@
 #TODO
 #szyfrowanie bloakmi działa dopóki bloki są maksymalnie rozmiaru 4
-#Napraw to debilu
+#Napraw to debilul
 
 import sympy
 from math import gcd as bltin_gcd
