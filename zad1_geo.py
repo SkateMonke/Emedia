@@ -8,6 +8,7 @@ def split_list(lst, chunk_size):
 
 IFD = list()
 dirEntry = []
+geoKeys = []
 
 type_dict = {
     "1": 1,
@@ -61,16 +62,12 @@ with open(filename, "rb") as f:
         tmpList = list()
         for j in range(0, ifd_size - 6, 12):
             tag = int.from_bytes(ifd_data[j:j + 2], endian)
-            # print("Tag: " + str(tag))
             type_tmp = int.from_bytes(ifd_data[j + 2:j + 4], endian)
-            # print("Type: " + str(type_tmp))
             count_tmp = int.from_bytes(ifd_data[j + 4:j + 8], endian)
-            # print("Count: " + str(count_tmp))
             if type_tmp <= 12:
                 tmp_val = count_tmp * type_dict[str(type_tmp)]
             else:
                 tmp_val = 1
-            print(tmp_val)
 
             if count_tmp == 1 or tmp_val > 4:
                 valueOffset_tmp = int.from_bytes(ifd_data[j + 8:j + 12], endian)
@@ -98,7 +95,28 @@ with open(filename, "rb") as f:
 
                 tmpList[-1]["values"] = tmp_val_list
 
+            if tmpList[-1]["tag"] == 34737:
+                geoKeysValues = tmpList[-1]["values"]
+
+            if tmpList[-1]["tag"] == 34735:
+                for a in range(4, len(tmpList[-1]["values"]), 4):
+                    geoKeys.append(
+                        {
+                            "key": tmpList[-1]["values"][a],
+                            "type": tmpList[-1]["values"][a+1],
+                            "count": tmpList[-1]["values"][a+2],
+                            "values": tmpList[-1]["values"][a+3]
+                        }
+                    )
+
         dirEntry += tmpList
+
+    for b in geoKeys:
+        if b["type"] == 34737:
+            b["values"] = geoKeysValues[b["values"]: b["values"] + b["count"] - 1]
+            b["type"] = 2
+        elif b["type"] == 0:
+            b["type"] = 3
 
     print("Number of IFD:", len(IFD))
     for elem in IFD:
@@ -107,3 +125,8 @@ with open(filename, "rb") as f:
     print("\nBaseline:")
     for elem in dirEntry:
         print(elem)
+
+    print("GeoKeys:")
+    for keys in geoKeys:
+        print(keys)
+
