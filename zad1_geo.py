@@ -26,6 +26,34 @@ type_dict = {
     "848": 1
 }
 
+geokeys_dict = {
+    1024: "GTModelTypeGeoKey",
+    1025: "GTRasterTypeGeoKey",
+    1026: "GTCitationGeoKey",
+    2048: "GeographicTypeGeoKey",
+    2049: "GeogCitationGeoKey",
+    2050: "GeogGeodeticDatumGeoKey",
+    2051: "GeogPrimeMeridianGeoKey",
+    2061: "GeogPrimeMeridianLongGeoKey",
+    2052: "GeogLinearUnitsGeoKey",
+    2053: "GeogLinearUnitSizeGeoKey",
+    2054: "GeogAngularUnitsGeoKey",
+    2055: "GeogAngularUnitSizeGeoKey",
+    2056: "GeogEllipsoidGeoKey",
+    2057: "GeogSemiMajorAxisGeoKey",
+    2058: "GeogSemiMinorAxisGeoKey",
+    2059: "GeogInvFlatteningGeoKey",
+    2060: "GeogAzimuthUnitsGeoKey",
+    3072: "ProjectedCSTypeGeoKey",
+    3073: "PCSCitationGeoKey",
+    3074: "ProjectionGeoKey",
+    3075: "ProjCoordTransGeoKey",
+    3076: "ProjLinearUnitsGeoKey",
+    3077: "ProjLinearUnitSizeGeoKey",
+    3078: "ProjStdParallel1GeoKey",
+    3079: "ProjStdParallel2GeoKey"
+}
+
 root = Tk()
 root.withdraw()
 root.wm_attributes('-topmost', 1)
@@ -113,10 +141,13 @@ with open(filename, "rb") as f:
 
     for b in geoKeys:
         if b["type"] == 34737:
-            b["values"] = geoKeysValues[b["values"]: b["values"] + b["count"] - 1]
+            tmp = []
+            tmp = geoKeysValues[b["values"]: b["values"] + b["count"] - 1]
+            b["values"] = [chr(x) for x in tmp]
             b["type"] = 2
         elif b["type"] == 0:
             b["type"] = 3
+        b["key"] = geokeys_dict[b["key"]]
 
     print("Number of IFD:", len(IFD))
     for elem in IFD:

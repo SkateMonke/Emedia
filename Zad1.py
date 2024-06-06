@@ -1,5 +1,8 @@
 from tkinter import Tk
 from tkinter.filedialog import askopenfilename
+import numpy as np
+import matplotlib.pyplot as plt
+import cv2
 
 IFD = list()
 dirEntry = []
@@ -100,6 +103,18 @@ root.wm_attributes('-topmost', 1)
 
 filename = askopenfilename(parent=root)
 
+img = cv2.imread(filename)
+gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+img_dft = cv2.dft(np.float32(gray), flags=cv2.DFT_COMPLEX_OUTPUT)
+fourier_shift = np.fft.fftshift(img_dft)
+magnitude = 20*np.log(cv2.magnitude(fourier_shift[:,:,0],fourier_shift[:,:,1]))
+magnitude = cv2.normalize(magnitude, None, 0, 255, cv2.NORM_MINMAX, cv2.CV_8UC1)
+cv2.imshow('fourier', magnitude)
+cv2.waitKey(0)
+cv2.destroyAllWindows()
+# plt.plot(magnitude)
+# plt.show()
+
 try:
     with open(filename, "rb") as f:
         header = f.read(8)
@@ -136,7 +151,9 @@ try:
                 if count_tmp == 1 or tmp_val > 4:
                     valueOffset_tmp = int.from_bytes(ifd_data[j + 8:j + 12], endian)
                 elif count_tmp <= 4 and tmp_val <= 4:
-                    valueOffset_tmp = (split_list(ifd_data[j + 8:j + 12], 4 // count_tmp))
+                    valueOffset_tmp = (split_list(ifd_data[j + 8:j + 12], 4 // count_tmp)
+
+                                       )
                     for h in range(0, len(valueOffset_tmp)):
                         valueOffset_tmp[h] = int.from_bytes(valueOffset_tmp[h], endian)
 
