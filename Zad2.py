@@ -300,9 +300,6 @@ def cfb_cypher(p, q, e, block_size, iv):
         plik = f_out.read()
         tmp = 0
         tmp_cipher = pow(iv, e, n)
-        # tmp_cipher = str(tmp_cipher)
-        # tmp_cipher = int(tmp_cipher[0:block_size])
-        # tmp_cipher = int(tmp_cipher)
         tmp_cipher = tmp_cipher.to_bytes(block_size, endian)
         plain_bytes = plik[stripoffsets[0]: stripoffsets[0] + block_size]
         cipher_bytes = bytes(a ^ b for (a, b) in zip(plain_bytes, tmp_cipher))
@@ -313,9 +310,6 @@ def cfb_cypher(p, q, e, block_size, iv):
             plain_bytes = plik[stripoffsets[0] + tmp: stripoffsets[0] + tmp + block_size]
             cipher_int = int.from_bytes(cipher_bytes, endian)
             tmp_cipher = pow(cipher_int, e, n)
-            # tmp_cipher = str(tmp_cipher)
-            # tmp_cipher = int(tmp_cipher[0:block_size])
-            # tmp_cipher = int(tmp_cipher)
             tmp_cipher = tmp_cipher.to_bytes(block_size, endian)
             cipher_bytes = bytes(a ^ b for (a, b) in zip(plain_bytes, tmp_cipher))
             f_out.seek(stripoffsets[0] + tmp)
@@ -328,9 +322,6 @@ def cfb_cypher(p, q, e, block_size, iv):
                 plain_bytes = plik[offsets + tmp: offsets + tmp + block_size]
                 cipher_int = int.from_bytes(cipher_bytes, endian)
                 tmp_cipher = pow(cipher_int, e, n)
-                # tmp_cipher = str(tmp_cipher)
-                # tmp_cipher = int(tmp_cipher[0:block_size])
-                # tmp_cipher = int(tmp_cipher)
                 tmp_cipher = tmp_cipher.to_bytes(block_size, endian)
                 cipher_bytes = bytes(a ^ b for (a, b) in zip(plain_bytes, tmp_cipher))
                 f_out.seek(offsets + tmp)
@@ -398,8 +389,10 @@ def rsa_library(public, block_size):
             for k in range(3):
                 tmp = im_arr[i][j][k]
                 tmp = int(tmp)
-                tmp = pow(tmp, e, n)
-                im_arr[i][j][k] = tmp % 255
+                tmp = tmp.to_bytes(1, 'little')
+                tmp_cipher = rsa.encrypt(tmp, public)
+                tmp_cipher = int.from_bytes(tmp_cipher, 'little')
+                im_arr[i][j][k] = tmp_cipher % 255
     tiff.imwrite('./img/RSA_library.tif', im_arr)
 
 
@@ -410,14 +403,14 @@ e = FindCoPrime((p - 1) * (q - 1), randrange(int(n / 2), n - 1))
 phi_n = (p - 1) * (q - 1)
 d = pow(e, -1, phi_n)
 ecb_block_size = 4
-cfb_block_size = 6
+cfb_block_size = 5
 iv = random_with_N_digits(cfb_block_size)
-public_key = rsa.PublicKey(p, q)
-# private_key = rsa.PrivateKey(n, d)
+public_key, private_key = rsa.newkeys(128)
 
 
-rsa_ecb_tiff(p, q, e, ecb_block_size)
-ecb_decipher(p, q, e, ecb_block_size, fileend)
-cfb_cypher(p, q, e, cfb_block_size, iv)
-cfb_decipher(p, q, e, cfb_block_size, iv)
+
+# rsa_ecb_tiff(p, q, e, ecb_block_size)
+# ecb_decipher(p, q, e, ecb_block_size, fileend)
+# cfb_cypher(p, q, e, cfb_block_size, iv)
+# cfb_decipher(p, q, e, cfb_block_size, iv)
 rsa_library(public_key, ecb_block_size)
